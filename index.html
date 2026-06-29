@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador CSV/Excel → HTML burbujas</title>
+  <!-- PapaParse para CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS para Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: "Open Sans", sans-serif; background:#f9f9f9; padding:20px; }
+    .ng-product-container { border:1px solid #ccc; border-radius:10px; padding:20px; margin:20px 0; background:#fff; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+    .ng-bubble-section { margin-bottom:15px; }
+    .diet-badge { display:inline-block; background:#eee; padding:5px 10px; border-radius:20px; margin-right:5px; font-size:0.9em; }
+    h1, h2 { color:#333; }
+    pre { background:#eee; padding:10px; border-radius:5px; }
+  </style>
+</head>
+<body>
+  <h1>Generador de productos en burbujas</h1>
+  <p>Subí tu archivo CSV o Excel (.xls/.xlsx) y se mostrará automáticamente en formato HTML.</p>
+  <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" />
+  <div id="output"></div>
+
+  <hr>
+  <h2>📖 Instrucciones (README)</h2>
+  <pre>
+# productos-html-generator
+
+Convierte archivos CSV o Excel en páginas HTML con formato de burbujas.
+
+## Uso
+1. Subí tu archivo index.html a un repositorio público en GitHub.
+2. Activá GitHub Pages en Settings → Pages (Source: rama main, carpeta /root).
+3. Abrí el link público que te da GitHub Pages.
+4. Desde la página podés subir cualquier archivo .csv, .xls o .xlsx y ver los productos renderizados en burbujas.
+
+## Notas
+- El generador usa PapaParse para CSV y SheetJS para Excel.
+- No requiere backend: todo corre en el navegador.
+- Podés personalizar estilos en el bloque <style>.
+  </pre>
+
+  <script>
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (ext === "csv") {
+        Papa.parse(file, {
+          header: true,
+          complete: function(results) {
+            renderProducts(results.data);
+          }
+        });
+      } else if (ext === "xlsx" || ext === "xls") {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(sheet);
+          renderProducts(json);
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        alert("Formato no soportado. Subí un CSV o Excel.");
+      }
+    });
+
+    function renderProducts(products) {
+      const container = document.getElementById('output');
+      container.innerHTML = "";
+      products.forEach((product) => {
+        const html = `
+          <article class="ng-product-container">
+            <div class="ng-bubble-section">
+              <h1>${product.name || "Producto sin nombre"}</h1>
+              <p>${product.description || ""}</p>
+              <p><strong>MARCA:</strong> ${product.brand || "Marca"}</p>
+              <p><strong>ORIGEN:</strong> ${product.origin || "Origen"}</p>
+            </div>
+
+            <div class="ng-bubble-section">
+              <div class="badge-container">
+                ${product.additional_attributes?.includes("Vegano") ? "<span class='diet-badge'>🌱 Vegano</span>" : ""}
+                ${product.additional_attributes?.includes("Sin Gluten") ? "<span class='diet-badge'>🚫 Sin Gluten</span>" : ""}
+                ${product.additional_attributes?.includes("Sin Azúcar Agregada") ? "<span class='diet-badge'>🚫 Sin Azúcar Agregada</span>" : ""}
+              </div>
+            </div>
+
+            <div class="ng-bubble-section">
+              <h2>Beneficios</h2>
+              <ul class="benefits-list">
+                <li>${product.meta_description || "Beneficio no especificado"}</li>
+              </ul>
+            </div>
+
+            <div class="ng-bubble-section">
+              <h2>Ingredientes</h2>
+              <p>${product.ingredients || "Ingredientes no especificados"}</p>
+            </div>
+
+            <div class="ng-bubble-section">
+              <h2>Información Nutricional</h2>
+              <p>${product.nutrition || "Valores nutricionales no disponibles"}</p>
+            </div>
+
+            <div class="ng-bubble-section">
+              <h2>Modo de consumo</h2>
+              <p>${product.usage || "Modo de uso no especificado"}</p>
+            </div>
+
+            <div class="ng-bubble-section">
+              <h2>Advertencias</h2>
+              <p>${product.warnings || "Conservar en lugar fresco y seco."}</p>
+            </div>
+          </article>`;
+        container.innerHTML += html;
+      });
+    }
+  </script>
+</body>
+</html>
